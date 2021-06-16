@@ -370,11 +370,52 @@ pre code {
 </ul></li>
 <li><p><u><b>Scripts/</b></u>: This directory includes the script files used in our analysis.</p>
 <ul>
-<li><p><u>COVID_enrichments.R</u> - For identifying enriched cell types and traits in the SARS-CoV-2 consensus transcriptome and candidate protein modules from the integrated SARS-CoV-2 interactome. Also useful for producing the Supplemental tables from our work.</p></li>
-<li><p><u>Utils.R</u> - Contains helper functions used in our enrichment analysis script.</p></li>
-<li><p><u>COVID_benchmarking.R</u> - Randomized trials conducted to test the robustness of individual DEGs and the consensus transcriptome from the three input disease models used in our framework. Also included are the experiments used to validate the level of connectivity observed among the consensus signature along with their interactions with the SARS-CoV-2 virus-host interactants.</p></li>
-<li><p><u>MCL_Clustering.R</u> - Optional script provided to identify protein modules by implementing MCL clustering algorithm. This scrippt takes the consensus signature and the SARS-CoV-2 virus-host interactants and constructs an interactome network using filtered protein-protein interactions from STRING (<a href="https://string-db.org/" class="uri">https://string-db.org/</a>). File containing the filtered interactions (total_score &gt;= 900; experimental_score &gt;= 700) can be found at <i>input_data/other data/</i></p></li>
-<li><p><u>phenotype_enrichments.ipynb</u> - iPython notebook that we used to parse child traits/terms from experimental factor ontology (EFO) hierarchy which are then used to compute enrichment of phenotype associations (including the child traits) from GWAS Catalog.</p></li>
+<li><u><b>GetConsensus.R</b></u> - To filter the differentially expressed gene (DEG) lists from each individual study and obtain a consensus transcriptomic signature. It has the following options:
+<ul>
+<li><i> <code>--</code>files</i>: Comma-separated list of result files from differential expression analysis from RUVSeq. In this project we use the results from running the DifferentialExpression module in CSBB-v3.0 (<a href="https://github.com/praneet1988/Computational-Suite-For-Bioinformaticians-and-Biologists" class="uri">https://github.com/praneet1988/Computational-Suite-For-Bioinformaticians-and-Biologists</a>)</li>
+<li><i> <code>--</code>org_assemblies (optional)</i>: A comma-separated list of Ensembl assembly IDs, one for each input study. Used to identify and map the human ortholog gene symbols for studies with non-human samples. Valid assembly IDs can be found at <a href="https://uswest.ensembl.org/info/about/species.html" class="uri">https://uswest.ensembl.org/info/about/species.html</a>. If not given, all gene symbols are assumed to belong to the same organism.</li>
+<li><i> <code>--</code>logFC</i>: A log<sub>2</sub>fc threshold value for filtering significant DEGs in each individual study (<i>default value</i> = 0.6)</li>
+<li><i> <code>--</code>pvalue</i>: A p-value (FDR corrected) threshold for filtering significant DEGs (<i>default value</i> = 0.6)</li>
+<li><i> <code>--</code>k</i>: Genes upregulated or downregulated in <i>k</i> or more studies are considered to be part of the consensus signature (<i>default value</i> = 2)</li>
+<li><i><code>--</code>outpath</i>: Path to the output directory where the consensus DEGs will be written to.</li>
+</ul></li>
+<li><u><b>MCL_Clustering.R</b></u>: To build an interaction-network of consensus DEGs and run the Markov clustering (MCL) algorithm for identifying perturbed protein modules from a given set of DEGs. The options for this script include:
+<ul>
+<li><i><code>--</code>deg_file</i>: A file containing the consensus DEGs and the virus-host interactome (if used). Must include one gene per each line.</li>
+<li><i><code>--</code>PPI_file (Optional)</i>: A tab-delimited file containing the set of human PPI. The latest version of STRING human PPIs can be downloaded from <a href="https://string-db.org/cgi/download?species_text=Homo+sapiens" class="uri">https://string-db.org/cgi/download?species_text=Homo+sapiens</a>. Alternatively, interactions from other sources can also be used. If not given, this script uses the filtered STRING PPIs used in our project.</li>
+<li><i><code>--</code>filter </i>: A condition to filter the PPI links prior to running the clustering algorithm. In this study, we only retained the interactions with a <i>combined_score</i> ≥ 0.9 or <i>experimental_score</i> ≥ 0.7</li>
+<li><i> <code>--</code>inflation_value</i>: Inflation parameter in MCL algorithm (<i>default value</i> = 2.5)</li>
+<li><i><code>--</code>max_iter</i>: Maximum number of iterations for the MCL algorithm (<i>default value</i> = 100)</li>
+<li><i><code>--</code>outpath</i>: Path to the output directory where the file containing the final MCL cluster memberships will be stored.</li>
+</ul></li>
+<li><u><b>Marker_enrichments.R</b></u>: To compute cell type marker enrichments among a given set of candidate gene modules. Supported options for this script are:
+<ul>
+<li><i><code>--</code>marker_file</i>: Text file containing cell type marker genes. It should contain 4 mandatory columns corresponding to the cell type (“cell”), gene marker (“gene”), fold change (“logFC”) and the adjusted p-value (“pval_adj”).</li>
+<li><i><code>--</code>cluster_file</i>: A two-column, tab-delimited file containing genes (first column) and their corresponding MCL cluster memberships (second column).</li>
+<li><i><code>--</code>outpath</i>: Path to the output directory.</li>
+</ul></li>
+<li><u><b>GWAS_enrichments.py</b></u>: To compute enrichments of phenotypic traits compiled from NHGRI-EBI GWAS Catalog database (<a href="https://www.ebi.ac.uk/gwas/home" class="uri">https://www.ebi.ac.uk/gwas/home</a>). Before performing the enrichment analysis, the experimental factor ontology (EFO) tree is parsed to obtain the child term (and its associations) for each of the GWAS Catalog traits. The EFO OBO file can be found at <a href="https://www.ebi.ac.uk/efo/efo.obo" class="uri">https://www.ebi.ac.uk/efo/efo.obo</a> while the latest version of GWAS Catalog associations are available at <a href="https://www.ebi.ac.uk/gwas/docs/file-downloads" class="uri">https://www.ebi.ac.uk/gwas/docs/file-downloads</a>.
+<ul>
+<li><i><code>--</code>obo_file</i> Path to the EFO OBO file (.txt).</li>
+<li><i><code>--</code>assoc_file</i>: A tab-delimited file containing the GWAS Catalog associations.</li>
+<li><i><code>--</code>cluster_file</i>: A two-column, tab-delimited file containing genes (first column) and their corresponding MCL cluster memberships (second column).</li>
+<li><i><code>--</code>remove_intergenic</i>: A Boolean flag to indicate whether to remove the intergenic associations.</li>
+<li><i><code>--</code>outpath</i>: Path to the output directory</li>
+</ul></li>
+<li><u><b>PheGenI_enrichments.R</b></u>: To compute module enrichments among the NCBI PheGenI (<a href="https://www.ncbi.nlm.nih.gov/gap/phegeni" class="uri">https://www.ncbi.nlm.nih.gov/gap/phegeni</a>) traits. The allowed options include:
+<ul>
+<li><i><code>--</code>assoc_file</i>: A tab-delimited file containing phenotype-genotype associations from NCBI PheGenI.</li>
+<li><i><code>--</code>cluster_file</i>: A two-column, tab-delimited file containing genes (first column) and their corresponding MCL cluster memberships (second column).</li>
+<li><i><code>--</code>p_value</i>: A p-value threshold for filtering associations (<i>default value</i> = 1e-05).</li>
+<li><i><code>--</code>remove_intergenic</i>: A Boolean flag to indicate whether to remove the intergenic associations.</li>
+<li><i><code>--</code>outpath</i>: Path to the output directory</li>
+</ul></li>
+<li><u><b>Miscellaneous scripts</b></u>:
+<ul>
+<li><u>COVID_enrichments.R</u> - Useful for producing the Supplemental tables from our work.</li>
+<li><u>Utils.R</u> - Contains helper functions used in our enrichment analysis script.</li>
+<li><u>COVID_benchmarking.R</u> - Randomized trials conducted to test the robustness of individual DEGs and the consensus transcriptome from the three input disease models used in our framework. Also included are the experiments used to validate the level of connectivity observed among the consensus signature along with their interactions with the SARS-CoV-2 virus-host interactants.</li>
+</ul></li>
 </ul></li>
 <li><p><u><b>RData/</b></u> - R objects to reproduce the results from our benchmarking experiments.</p></li>
 <li><p><u><b>Figures_data/</b></u> - Contains the cytoscape session files to generate the network figures (both main and Supplemental) presented in our work. These session objects also contain the input networks that were used to generate the visualizations</p></li>
