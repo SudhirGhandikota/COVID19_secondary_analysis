@@ -1,41 +1,87 @@
 library(igraph)
 library(MCL)
 library(mclust)
+library(optparse)
+library(stringi)
+library(dplyr)
 
-# optional script to implement MCL clustering
-workingDir = '/path/to/git/repository/' # set the working directory
-setwd(workingDir)
+option_list = list(
+  make_option(c("-d", "--deg_file"), type="character", default=NULL, 
+              help="File containing consensus transcriptome (and optional virus-host proteome) one symbol for each line ",
+              metavar="character"),
+  make_option(c("-p", "--PPI_file"), type="character", default=NULL, 
+              help="Optional file containing human PPI network", metavar="character"),
+  make_option(c("-f", "--filter"), type="character", default="combined_score >= 900 or experimental >= 700", 
+              help="Filtering condition (optional) ", metavar="character"),
+  make_option(c("-i", "--inflation_value"), type="character", default="2.5", 
+              help="The inflation parameter for the MCL clustering (default = 2.5) ", metavar="character"),
+  make_option(c("-m", "--max_iter"), type="character", default="100", 
+              help="The inflation parameter for the MCL clustering ", metavar="character"),
+  make_option(c("-o", "--outpath"), type="character", default='/', 
+              help="Outpath", metavar="character")
+)
 
-# reading conserved signatures -> differentially expressed in at least 2 out 3 studies
-# Supplemental Table S2
-cons_up = as.vector(read.table("input_data/SARS-CoV2_DEGS/Conserved_UP.txt", header = F)$V1)
-cons_dn = as.vector(read.table("input_data/SARS-CoV2_DEGS/Conserved_DN.txt", header = F)$V1)
-PPI_genes = read.table('input_data/SARS-CoV2_DEGs/336 PPI.txt')$V1
+start_time = Sys.time()
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
+print(opt)
+if(length(opt$deg_file)==0){
+  print(paste("File containing conserved DEGs is missing. Please try again"))
+  quit()
+}
+if(length(opt$PPI_file)==0){
+  print(paste("PPI file is not provided. Using the default PPI file from STRING(v11)"))
+  opt$PPI_file = "../input_data/other data/filtered_PPI.txt"
+}
 
-# PPI links from STRING(v11) filtered based on 
-# total score >= 900 or experimental score >= 700
-PPI_data = read.table("input_data/other data/filtered_PPI.txt",sep="\t", header = T)
+# # optional script to implement MCL clustering
+# 
+# # reading conserved signatures + virus-host proteome (optional) -> differentially expressed in at least 2 out 3 studies
+degs = read.table(opt$deg_file, sep="\t", header = F)
+degs = as.vector(degs$V1)
+print(paste("Number of DEGs:", length(degs), sep=" "))
 
-# filtering SARS-CoV2-interactome
-PPI_data_sars2 = PPI_data[(PPI_data$Gene1 %in% c(cons_up,cons_dn,PPI_genes))
-                          & (PPI_data$Gene2 %in% c(cons_up,cons_dn,PPI_genes)),]
-PPI_data_sars2 = PPI_data_sars2[!duplicated(t(apply(PPI_data_sars2,1,sort))),]
-PPI_data_sars2 = PPI_data_sars2[!PPI_data_sars2$Gene1==PPI_data_sars2$Gene2,]
-PPI_data_sars2$Exp_Score = NULL
-# constructing a graph based on the interactome
-graph_sars2 = graph_from_data_frame(PPI_data_sars2, directed = F)
-# nodes in the interactome
-nodes_sars2 = names(V(graph_sars2))
-print(is.weighted(graph_sars2))
+# # PPI links
+PPI_data = read.table(opt$PPI_file, sep="\t", header = T)
+print(paste("*****", "PPI Links", "*****"))
+print(head(PPI_data))
+print("Dimension (before filtering)")
+print(dim(PPI_data))
+condition = opt$filter
+condition = stri_replace_all_fixed(condition, c(" OR ", " or ", " AND ", " and "), 
+                                   c(" | ", " | ", " & ", " & "), vectorize_all = F)
+PPI_data = PPI_data %>% filter(eval(parse(text=condition)))
+print("Dimension (after filtering)")
+print(dim(PPI_data))
 
-# MCL clustering step
-adj_sars2 = as_adjacency_matrix(graph_sars2)
-mcl_results = mcl(adj_sars2, inflation = 2.5, addLoops = T)
-mod_score = modularity(graph_sars2, as.vector(mcl_results$Cluster+1))
-length(mcl_results$Cluster)
-length(nodes_sars2)
+# # filtering PPI among DEGs
+PPI_data_fil = PPI_data[(PPI_data$protein1 %in% degs) & (PPI_data$protein2 %in% degs),]
+PPI_data_fil = PPI_data_fil[!duplicated(t(apply(PPI_data_fil,1,sort))),]
+PPI_data_fil = PPI_data_fil[!PPI_data_fil$protein1==PPI_data_fil$protein2,]
 
-# final clustering results
-clustering_results = as.data.frame(cbind(nodes_sars2, mcl_results$Cluster))
+# # constructing a graph based on the interactome
+PPI_data_fil$combined_score = NULL
+PPI_data_fil$experimental = NULL
+graph_fil = graph_from_data_frame(PPI_data_fil, directed = F)
+# # nodes in the interactome
+nodes_fil = names(V(graph_fil))
+print(paste("Number of nodes in the final interactome:", length(nodes_fil), 
+      "Weighted:", is.weighted(graph_fil)))
+
+# # MCL clustering step
+adj_fil = as_adjacency_matrix(graph_fil)
+inflation = as.numeric(opt$inflation_value)
+max_iter = as.numeric(opt$max_iter)
+print(paste("*****", "MCL Clustering", "*****"))
+print(paste("Parameters:", "Inflation:", inflation, "Maxiters:", max_iter))
+mcl_results = mcl(adj_fil, inflation = inflation, addLoops = T, max.iter = max_iter)
+mod_score = modularity(graph_fil, as.vector(mcl_results$Cluster+1))
+print(paste("Number of clusters:", length(unique(mcl_results$Cluster))))
+
+# # final clustering results
+clustering_results = as.data.frame(cbind(nodes_fil, mcl_results$Cluster))
 names(clustering_results) = c("Gene", "MCL_Clustering")
-#write.table(clustering_results, "SARS-CoV-2-Cons_MCL_Clusters", sep = "\t", row.names = F, quote = F)
+outfile = paste(opt$outpath,"/", "MCL_Clusters.txt", sep="")
+write.table(clustering_results, outfile, sep = "\t", row.names = F, quote = F)
+end_time = Sys.time()
+print(end_time - start_time)

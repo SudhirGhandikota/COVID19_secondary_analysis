@@ -1,4 +1,4 @@
-name	node1 gene ID	MCL cluster	Conserved (Y/N)	SARS-CoV-2 Interacting Protein	SARS-CoV-2 PPI (Y/N)
+gene	gene ID	cluster	Conserved (Y/N)	SARS-CoV-2 Interacting Protein	SARS-CoV-2 PPI (Y/N)
 ADAR	103	C-1	yes	NA	no
 ANAPC11	51529	C-1	yes	NA	no
 ANAPC15	25906	C-1	yes	NA	no
