@@ -1,0 +1,29 @@
+Rscript GetConsensus.R 
+	--files ../input_data/Count\ Data/GSE147507/DE_results.txt,../input_data/Count\ Data/GSE150847/DE_results.txt,../input_data/Count\ Data/GSE153940/DE_results.txt 
+	--org_assemblies GRCh38.p13,GRCm39,ChlSab1.1 
+	--logFC 0.6 --pvalue 0.05 --k 2 --outpath .
+
+Rscript MCL_Clustering.R 
+	--deg_file ‘../input_data/SARS-CoV2_DEGS/DEGs+PPI.txt’ 
+	--PPI_file ‘../input_data/other\ data/filtered_PPI.txt’ 
+	--filter 'combined_score >= 900' 
+	--inflation_value 2.5 --max_iter 100 
+	--outpath ‘../input_data/other\ data/’
+
+Rscript Marker_enrichments.R 
+	--marker_file ../input_data/Lung_Markers/lung_markers_test.txt
+	--cluster_file ../input_data/SARS-CoV-2-Cons_MCL_Clusters.txt
+	--p_value 0.05 --logFC 0.5 --outpath.
+	
+Rscript PheGenI_enrichments.R 
+	--assoc_file ../input_data/other\ data/PheGenI_Association_latest.txt 
+	--cluster_file ../input_data/SARS-CoV-2-Cons_MCL_Clusters.txt 
+	--remove_intergenic --p_value 0.00001 --outpath .
+
+python GWAS_enrichments.py 
+	--obo_file ../input_data/other\ data/efo.obo.txt 
+	--cluster_file ../input_data/SARS-CoV-2-Cons_MCL_Clusters.txt 
+	--assoc_file ../input_data/other\ data/gwas_catalog_v1.0.2-associations_e100_r2020-07-14.tsv --outpath .
+
+
+

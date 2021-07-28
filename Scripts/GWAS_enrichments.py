@@ -154,6 +154,9 @@ parser.add_argument('--assoc_file', type=str,
 parser.add_argument('--cluster_file', type=str,
                     help="Path to tab-delimited file (two columns) containing genes and their module memberships",
                     required=True)
+parser.add_argument('--min_genes', type=int,
+                    help="Minimum number of genes in a candidate cluster", default=5,
+                    required=False)
 parser.add_argument('--remove_intergenic', action='store_true',
                     help="Path to tab-delimited file (two columns) containing genes and their module memberships",
                     required=False)
@@ -245,7 +248,7 @@ print(node_stats.head(2))
 # removing unassigned genes
 node_stats = node_stats[-node_stats['cluster'].isna()]
 # candidate clusters
-selected_clusters = list({cid:size for cid,size in dict(Counter(node_stats['cluster'])).items() if size > 4}.keys())
+selected_clusters = list({cid:size for cid,size in dict(Counter(node_stats['cluster'])).items() if size >= args.min_genes}.keys())
 print("Number of candidate clusters:", len(selected_clusters))
 
 #initiating multiprocessing pool object

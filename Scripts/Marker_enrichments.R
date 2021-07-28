@@ -52,6 +52,9 @@ option_list = list(
   make_option(c("-l", "--logFC"), type="numeric", default=0.5, 
               help="P-value threshold for filtering the marker associations)",
               metavar="character"),
+  make_option(c("-g", "--min_genes"), type="numeric", default=5, 
+              help="Minimum number of genes in a candidate cluster",
+              metavar="character"),
   make_option(c("-c", "--cluster_file"), type="character", default=NULL, 
               help="Two-column file (Gene-ClusterID) containing module memberships", 
               metavar="character"),
@@ -77,7 +80,7 @@ node_stats = read.csv(opt$cluster_file, sep = "\t")
 # # removing unclustered geness
 node_stats = node_stats[!node_stats$cluster == '',]
 # # candidate modules => at least 5 genes
-selected_clusters = names(table(node_stats$cluster)[table(node_stats$cluster)>4])
+selected_clusters = names(table(node_stats$cluster)[table(node_stats$cluster)>=opts$min_genes])
 
 logfc = as.numeric(opt$logFC)
 pval = as.numeric(opt$p_value)
@@ -101,7 +104,7 @@ for(i in 1:length(cluster_genes)){
 enc_results = enc_results[as.numeric(as.vector(enc_results$Overlap_Count))>0,]
 outfile = paste(opt$outpath,"/", "module_marker_enrichments.txt", sep="")
 print(outfile)
-write.table(enc_results_combined, outfile, sep = "\t", row.names = F, quote = F)
+write.table(enc_results, outfile, sep = "\t", row.names = F, quote = F)
 
 end_time = Sys.time()
 print(end_time - start_time)

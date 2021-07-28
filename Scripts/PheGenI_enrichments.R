@@ -12,6 +12,9 @@ option_list = list(
   make_option(c("-p", "--p_value"), type="numeric", default=0.00001, 
               help="P-value threshold for filtering the associations)",
               metavar="character"),
+  make_option(c("-g", "--min_genes"), type="numeric", default=5, 
+              help="Minimum number of genes in a candidate cluster",
+              metavar="character"),
   make_option(c("-c", "--cluster_file"), type="character", default=NULL, 
               help="Two-column file (Gene-ClusterID) containing module memberships", 
               metavar="character"),
@@ -40,7 +43,7 @@ node_stats = read.csv(opt$cluster_file, sep = "\t")
 # # removing unclustered genes
 node_stats = node_stats[!node_stats$cluster == '',]
 # # candidate modules => at least 5 genes
-selected_clusters = names(table(node_stats$cluster)[table(node_stats$cluster)>4])
+selected_clusters = names(table(node_stats$cluster)[table(node_stats$cluster)>=opts$min_genes])
 
 bg_cnt = length(union(unique(phegen_info$Gene), unique(phegen_info$Gene.2)))
 cluster_trait_enrichments = data.frame()
